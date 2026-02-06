@@ -1,11 +1,15 @@
+import { Carrier } from '../types/stocker';
+
 interface RackCellProps {
   column: number;
   row: number;
-  deepShelf: string | null;
-  frontShelf: string | null;
-  onDragStart: (column: number, row: number, shelf: 'deep' | 'front') => void;
+  deepShelf: Carrier | null;
+  frontShelf: Carrier | null;
+  onDragStart: (e: React.DragEvent, column: number, row: number, shelf: 'deep' | 'front') => void;
   onDragOver: (e: React.DragEvent) => void;
-  onDrop: (column: number, row: number) => void;
+  onDrop: (e: React.DragEvent, column: number, row: number) => void;
+  // Update Type: allow null carrier
+  onCarrierClick: (carrier: Carrier | null, col: number, row: number, shelf: 'deep' | 'front') => void;
   isDragOver: boolean;
 }
 
@@ -17,63 +21,87 @@ export function RackCell({
   onDragStart,
   onDragOver,
   onDrop,
+  onCarrierClick,
   isDragOver,
 }: RackCellProps) {
-  const getColor = () => {
-    const carrierCount = (deepShelf ? 1 : 0) + (frontShelf ? 1 : 0);
-    if (carrierCount === 0) return 'bg-gray-700';
-    if (carrierCount === 1) return 'bg-blue-500';
-    return 'bg-red-500';
-  };
+  
+  const renderSlot = (shelfType: 'deep' | 'front', carrier: Carrier | null) => {
+    const label = shelfType === 'deep' ? '1' : '2'; 
+    const isFilled = carrier !== null;
+    const isProhibited = carrier?.isProhibited;
+    const isMaintenance = carrier?.id === "MAINTENANCE"; // Cek flag khusus
 
-  const canDragFront = frontShelf;
-  const canDragDeep = deepShelf && !frontShelf;
+    // Default Style (Kosong)
+    let bgClass = "bg-rose-50"; 
+    let borderClass = "border-rose-200";
+    let textClass = "text-rose-900/50";
+    let hoverClass = "hover:bg-rose-100"; // Efek hover saat kosong
+
+    if (isFilled) {
+      if (isProhibited) {
+        // Style Prohibited / Maintenance
+        bgClass = "bg-gray-700";
+        textClass = "text-white";
+        borderClass = "border-gray-600";
+        hoverClass = "hover:bg-gray-800";
+      } else {
+        // Style Normal Filled
+        bgClass = "bg-blue-500"; 
+        borderClass = "border-blue-600";
+        textClass = "text-white";
+        hoverClass = "hover:bg-blue-600";
+      }
+    }
+
+    const canDrag = isFilled && !isProhibited && (shelfType === 'front' || !frontShelf); 
+
+    return (
+      <div
+        className={`
+          flex-1 w-full flex items-center justify-center 
+          text-xs font-bold border rounded-sm mb-[2px] last:mb-0
+          transition-all duration-200 relative
+          ${bgClass} ${borderClass} ${textClass} ${hoverClass}
+          ${canDrag ? 'cursor-grab active:cursor-grabbing' : ''}
+          cursor-pointer shadow-sm
+        `}
+        draggable={canDrag}
+        onDragStart={(e) => {
+          if (canDrag) onDragStart(e, column, row, shelfType);
+          else e.preventDefault();
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          // Selalu trigger klik, baik kosong maupun isi
+          onCarrierClick(carrier, column, row, shelfType);
+        }}
+        // Tooltip dinamis
+        title={isFilled 
+          ? (isMaintenance ? "Slot Under Maintenance" : `ID: ${carrier?.id}\nProhibited: ${isProhibited ? 'Yes' : 'No'}`) 
+          : 'Empty Slot (Click to Prohibit)'}
+      >
+        {label}
+        {isProhibited && <span className="absolute top-0 right-1 text-[10px]">🚫</span>}
+      </div>
+    );
+  };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    onDrop(column, row);
+    onDrop(e, column, row);
   };
 
   return (
     <div
-      className={`w-14 h-14 ${getColor()} rounded flex flex-col items-center justify-center text-white text-xs font-semibold border-2 transition-all ${
-        isDragOver ? 'border-green-400 border-4 ring-4 ring-green-400 ring-opacity-50 scale-105' : 'border-gray-800'
-      }`}
+      className={`
+        w-14 h-16 bg-gray-200 rounded flex flex-col p-1 border-2 transition-all 
+        ${isDragOver ? 'border-green-500 bg-green-50 scale-105 shadow-lg z-10' : 'border-gray-300'}
+      `}
       onDragOver={onDragOver}
       onDrop={handleDrop}
     >
-      {deepShelf && (
-        <div
-          draggable={canDragDeep}
-          onDragStart={(e) => {
-            if (canDragDeep) {
-              onDragStart(column, row, 'deep');
-            } else {
-              e.preventDefault();
-            }
-          }}
-          className={`leading-tight px-2 py-0.5 rounded transition-all mb-0.5 ${
-            canDragDeep ? 'cursor-move hover:bg-white hover:text-gray-900' : 'opacity-50 cursor-not-allowed'
-          }`}
-        >
-          2
-        </div>
-      )}
-      {frontShelf && (
-        <div
-          draggable={canDragFront}
-          onDragStart={(e) => {
-            if (canDragFront) {
-              onDragStart(column, row, 'front');
-            } else {
-              e.preventDefault();
-            }
-          }}
-          className={`leading-tight px-2 py-0.5 rounded cursor-move hover:bg-white hover:text-gray-900 transition-all`}
-        >
-          1
-        </div>
-      )}
+      {renderSlot('deep', deepShelf)}
+      {renderSlot('front', frontShelf)}
     </div>
   );
 }

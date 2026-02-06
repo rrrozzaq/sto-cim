@@ -1,15 +1,25 @@
+export type MenuItem = 'main' | 'maintenance' | 'information';
+
+export interface Carrier {
+  id: string;
+  entryTime: Date;
+  isProhibited: boolean;
+  prohibitedBy?: 'admin' | 'worker' | 'system' | null;
+  prohibitReason?: string;
+}
+
 export interface Rack {
   column: number;
   row: number;
-  deepShelf: string | null;
-  frontShelf: string | null;
+  deepShelf: Carrier | null;
+  frontShelf: Carrier | null;
 }
 
 export interface CraneStatus {
   position: number;
   isOnline: boolean;
   isMoving: boolean;
-  currentCarrier: string | null;
+  currentCarrier: Carrier | null;
 }
 
 export interface MovementLog {
@@ -31,5 +41,3 @@ export interface Alarm {
   isActive: boolean;
   createdAt: Date;
 }
-
-export type MenuItem = 'main' | 'maintenance' | 'information';

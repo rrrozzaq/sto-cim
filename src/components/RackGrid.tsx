@@ -1,15 +1,16 @@
 import { RackCell } from './RackCell.tsx';
-import { Rack } from '../types/stocker';
+import { Rack, Carrier } from '../types/stocker.tsx';
 
 interface RackGridProps {
   racks: Rack[];
   columns: number;
   rows: number;
   isTopSection?: boolean;
-  onDragStart: (column: number, row: number, shelf: 'deep' | 'front') => void;
+  onDragStart: (e: React.DragEvent, column: number, row: number, shelf: 'deep' | 'front') => void;
   onDragOver: (e: React.DragEvent) => void;
-  onDrop: (column: number, row: number) => void;
+  onDrop: (e: React.DragEvent, column: number, row: number) => void;
   dragOverCell: { column: number; row: number } | null;
+  onCarrierClick: (carrier: Carrier | null, col: number, row: number, shelf: 'deep' | 'front') => void;
 }
 
 export function RackGrid({
@@ -21,28 +22,29 @@ export function RackGrid({
   onDragOver,
   onDrop,
   dragOverCell,
+  onCarrierClick
 }: RackGridProps) {
   const getRack = (col: number, row: number) => {
     return racks.find(r => r.column === col && r.row === row);
   };
 
+  // Logic label baris (top section dibalik urutannya)
   const rowLabels = isTopSection
     ? Array.from({ length: rows }, (_, i) => rows + 4 - i)
     : Array.from({ length: rows }, (_, i) => rows - i);
 
   return (
     <div className="flex gap-3">
+      {/* Label Baris */}
       <div className="flex flex-col justify-around">
         {rowLabels.map((label) => (
-          <div
-            key={label}
-            className="w-12 h-14 bg-gray-400 rounded flex items-center justify-center text-xl font-bold text-gray-800"
-          >
+          <div key={label} className="w-12 h-14 bg-slate-400 rounded flex items-center justify-center text-xl font-bold text-white shadow-sm">
             {label}
           </div>
         ))}
       </div>
 
+      {/* Grid Rak */}
       <div className="flex flex-col gap-2">
         {rowLabels.map((rowLabel) => (
           <div key={rowLabel} className="flex gap-2">
@@ -60,6 +62,7 @@ export function RackGrid({
                   onDragOver={onDragOver}
                   onDrop={onDrop}
                   isDragOver={isDragOver}
+                  onCarrierClick={onCarrierClick}
                 />
               );
             })}

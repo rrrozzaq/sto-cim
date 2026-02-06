@@ -1,4 +1,4 @@
-import { Home, Wrench, Info, Bell, Power, Undo } from 'lucide-react';
+import { Home, Wrench, Info, Bell, Power } from 'lucide-react';
 import { MenuItem } from '../types/stocker';
 
 interface NavigationBarProps {
@@ -16,9 +16,7 @@ export function NavigationBar({
   onMenuChange,
   onAlarmClick,
   onShutdownClick,
-  onUndo,
   alarmCount,
-  canUndo,
 }: NavigationBarProps) {
   return (
     <div className="bg-gray-200 border-t-4 border-gray-400 shadow-lg">
@@ -70,19 +68,6 @@ export function NavigationBar({
               {alarmCount}
             </span>
           )}
-        </button>
-
-        <button
-          onClick={onUndo}
-          disabled={!canUndo}
-          className={`flex flex-col items-center justify-center px-6 py-4 rounded-lg font-semibold transition-all ${
-            canUndo
-              ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 hover:shadow cursor-pointer'
-              : 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-50'
-          }`}
-        >
-          <Undo size={24} className="mb-1" />
-          <span className="text-sm">Undo</span>
         </button>
 
         <button
