@@ -19,6 +19,7 @@ import { ShutdownModal } from "./components/ShutdownModal.tsx";
 import { NavigationBar } from "./components/NavigationBar.tsx";
 import { MoveConfirmModal } from "./components/MoveConfirmModal.tsx";
 import { CarrierDetailModal } from "./components/CarrierDetailModal.tsx";
+import { MovementArrow } from "./components/MovementArrow.tsx";
 
 type AnimationStage =
   | "idle"
@@ -83,6 +84,11 @@ function App() {
     carrier: Carrier;
     pos: { col: number; row: number; shelf: "deep" | "front" };
   } | null>(null);
+
+  // Arrow Animation State
+  const [showArrow, setShowArrow] = useState(false);
+  const [arrowFrom, setArrowFrom] = useState({ col: 0, row: 0 });
+  const [arrowTo, setArrowTo] = useState({ col: 0, row: 0 });
 
   // --- INITIALIZATION ---
   useEffect(() => {
@@ -280,13 +286,22 @@ function App() {
   // --- CORE LOGIC: ANIMASI PERPINDAHAN ---
   const executeCarrierMovement = async (fromCol: number, fromRow: number, fromShelf: 'deep' | 'front', toCol: number, toRow: number) => {
     setIsAnimating(true);
-    
+
+    // Show arrow animation
+    setArrowFrom({ col: fromCol, row: fromRow });
+    setArrowTo({ col: toCol, row: toRow });
+    setShowArrow(true);
+
     // Ambil Data Carrier Asli (Objek)
     const sourceRack = racks.find(r => r.column === fromCol && r.row === fromRow);
     const carrierObj = fromShelf === 'deep' ? sourceRack?.deepShelf : sourceRack?.frontShelf;
-    
-    if (!carrierObj) { setIsAnimating(false); return; }
-    
+
+    if (!carrierObj) {
+      setShowArrow(false);
+      setIsAnimating(false);
+      return;
+    }
+
     // Tentukan warna visual untuk animasi crane (Merah jika rak sumber penuh dua-duanya, Biru jika satu)
     const color = (sourceRack?.deepShelf && sourceRack?.frontShelf) ? 'red' : 'blue';
 
@@ -374,7 +389,9 @@ function App() {
     setCraneStatus(prev => ({ ...prev, isMoving: true, position: 0 }));
     await sleep(2500);
     setCraneStatus(prev => ({ ...prev, isMoving: false, position: 0 }));
-    
+
+    // Hide arrow
+    setShowArrow(false);
     setIsAnimating(false);
   };
 
@@ -455,12 +472,21 @@ function App() {
       />
 
       {/* Komponen Modal Baru */}
-      <CarrierDetailModal 
+      <CarrierDetailModal
         isOpen={detailModalOpen}
         onClose={() => setDetailModalOpen(false)}
         carrier={selectedCarrierData?.carrier || null}
         rackPosition={selectedCarrierData?.pos || null}
         onSave={handleCarrierSave}
+      />
+
+      {/* Movement Arrow Animation */}
+      <MovementArrow
+        fromCol={arrowFrom.col}
+        fromRow={arrowFrom.row}
+        toCol={arrowTo.col}
+        toRow={arrowTo.row}
+        isVisible={showArrow}
       />
     </div>
   );
