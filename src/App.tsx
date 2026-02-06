@@ -31,11 +31,13 @@ type AnimationStage =
   | "carrier-moving-with-arm";
 
 interface PendingMove {
-  fromCol: number;
-  fromRow: number;
-  fromShelf: "deep" | "front";
-  toCol: number;
-  toRow: number;
+  fromCol?: number;
+  fromRow?: number;
+  fromShelf?: "deep" | "front";
+  fromPort?: 'in' | 'out';
+  toCol?: number;
+  toRow?: number;
+  toPort?: 'in' | 'out';
   carrierId: string;
 }
 
@@ -77,7 +79,12 @@ function App() {
   // Drag & Drop Data
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
   const [dragOverCell, setDragOverCell] = useState<{ column: number; row: number; } | null>(null);
-  
+
+  // Port States
+  const [portIn, setPortIn] = useState<Carrier | null>(null);
+  const [portOut, setPortOut] = useState<Carrier | null>(null);
+  const [dragOverPort, setDragOverPort] = useState<'in' | 'out' | null>(null);
+
   // State untuk Carrier yang sedang diklik detailnya
   const [selectedCarrierData, setSelectedCarrierData] = useState<{
     carrier: Carrier;
@@ -115,7 +122,14 @@ function App() {
       }
     }
     setRacks(initialRacks);
-    
+
+    // Initialize Port with dummy carrier
+    setPortIn({
+      id: 'PORT-IN-001',
+      entryTime: new Date(Date.now() - 300000),
+      isProhibited: false,
+    });
+
     // Dummy Logs & Alarms
     setMovementLogs([{
         id: "1", carrierId: "C3R5-D", fromColumn: 3, fromRow: 5, toColumn: 1, toRow: 3,
@@ -174,11 +188,15 @@ function App() {
   const handleCarrierSave = (updatedCarrier: Carrier) => {
     if (!selectedCarrierData) return;
     const { col, row, shelf } = selectedCarrierData.pos;
-    
+
+    if (updatedCarrier.id === "PORT-MAINTENANCE") {
+      return;
+    }
+
     setRacks(prev => prev.map(r => {
       if (r.column === col && r.row === row) {
         const shelfKey = shelf === 'deep' ? 'deepShelf' : 'frontShelf';
-        
+
         let newValue: Carrier | null = updatedCarrier;
 
         // LOGIKA PENYIMPANAN:
@@ -242,7 +260,7 @@ function App() {
     const dragDataString = e.dataTransfer.getData("application/json");
     if (!dragDataString) return;
 
-    const { column: fromCol, row: fromRow, shelf: fromShelf, carrierId } = JSON.parse(dragDataString);
+    const dragData = JSON.parse(dragDataString);
 
     // Cek rak tujuan
     const destRack = racks.find((r) => r.column === toCol && r.row === toRow);
@@ -252,29 +270,188 @@ function App() {
       return;
     }
 
-    setPendingMove({ 
-      fromCol, 
-      fromRow, 
-      fromShelf, 
-      toCol, 
-      toRow,
-      carrierId 
-    });
+    if (dragData.fromPort) {
+      setPendingMove({
+        fromPort: dragData.fromPort,
+        toCol,
+        toRow,
+        carrierId: dragData.carrierId
+      });
+    } else {
+      setPendingMove({
+        fromCol: dragData.column,
+        fromRow: dragData.row,
+        fromShelf: dragData.shelf,
+        toCol,
+        toRow,
+        carrierId: dragData.carrierId
+      });
+    }
+
     setIsMoveConfirmOpen(true);
     setDragOverCell(null);
   };
 
   const handleConfirmMove = () => {
     if (!pendingMove) return;
-    executeCarrierMovement(
-      pendingMove.fromCol,
-      pendingMove.fromRow,
-      pendingMove.fromShelf,
-      pendingMove.toCol,
-      pendingMove.toRow
-    );
+
+    if (pendingMove.toPort === 'out') {
+      removeCarrierFromSource(pendingMove);
+      setIsMoveConfirmOpen(false);
+      setPendingMove(null);
+      return;
+    }
+
+    if (pendingMove.fromPort && pendingMove.toCol !== undefined && pendingMove.toRow !== undefined) {
+      moveFromPortToRack(pendingMove);
+    } else if (pendingMove.fromCol !== undefined && pendingMove.fromRow !== undefined && pendingMove.fromShelf !== undefined && pendingMove.toCol !== undefined && pendingMove.toRow !== undefined) {
+      executeCarrierMovement(
+        pendingMove.fromCol,
+        pendingMove.fromRow,
+        pendingMove.fromShelf,
+        pendingMove.toCol,
+        pendingMove.toRow
+      );
+    }
+
     setIsMoveConfirmOpen(false);
     setPendingMove(null);
+  };
+
+  // --- HANDLERS: PORT DRAG & DROP ---
+  const handlePortDragStart = (e: React.DragEvent, type: 'in' | 'out') => {
+    if (isAnimating) { e.preventDefault(); return; }
+    if (!craneStatus.isOnline) {
+      alert("Crane is offline. Please turn it on in the Maintenance menu.");
+      e.preventDefault();
+      return;
+    }
+
+    const carrier = type === 'in' ? portIn : portOut;
+    if (!carrier || carrier.isProhibited) {
+      e.preventDefault();
+      if (carrier?.isProhibited) {
+        alert(`Carrier ${carrier.id} is PROHIBITED. Cannot move.`);
+      }
+      return;
+    }
+
+    const dragData = JSON.stringify({ fromPort: type, carrierId: carrier.id });
+    e.dataTransfer.setData("application/json", dragData);
+  };
+
+  const handlePortDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handlePortDrop = (e: React.DragEvent, type: 'in' | 'out') => {
+    e.preventDefault();
+    const dragDataString = e.dataTransfer.getData("application/json");
+    if (!dragDataString) return;
+
+    const dragData = JSON.parse(dragDataString);
+
+    if (type === 'out') {
+      setPendingMove({
+        ...dragData,
+        toPort: 'out',
+        carrierId: dragData.carrierId
+      });
+      setIsMoveConfirmOpen(true);
+      setDragOverPort(null);
+      return;
+    }
+
+    if (type === 'in' && !portIn) {
+      if (dragData.fromPort) {
+        const carrier = dragData.fromPort === 'out' ? portOut : null;
+        if (carrier) {
+          setPortIn(carrier);
+          if (dragData.fromPort === 'out') setPortOut(null);
+        }
+      } else if (dragData.column !== undefined) {
+        const sourceRack = racks.find(r => r.column === dragData.column && r.row === dragData.row);
+        const carrier = dragData.shelf === 'deep' ? sourceRack?.deepShelf : sourceRack?.frontShelf;
+        if (carrier) {
+          setPortIn(carrier);
+          setRacks(prev => prev.map(r => {
+            if (r.column === dragData.column && r.row === dragData.row) {
+              return { ...r, [dragData.shelf === 'deep' ? 'deepShelf' : 'frontShelf']: null };
+            }
+            return r;
+          }));
+        }
+      }
+    }
+    setDragOverPort(null);
+  };
+
+  const handlePortCarrierClick = (carrier: Carrier | null, type: 'in' | 'out') => {
+    const targetCarrier = carrier || {
+      id: "PORT-MAINTENANCE",
+      entryTime: new Date(),
+      isProhibited: false,
+      prohibitedBy: null,
+      prohibitReason: ""
+    };
+    setSelectedCarrierData({ carrier: targetCarrier, pos: { col: 0, row: 0, shelf: 'deep' } });
+    setDetailModalOpen(true);
+  };
+
+  const removeCarrierFromSource = (move: PendingMove) => {
+    if (move.fromPort) {
+      if (move.fromPort === 'in') setPortIn(null);
+      if (move.fromPort === 'out') setPortOut(null);
+    } else if (move.fromCol !== undefined && move.fromRow !== undefined && move.fromShelf !== undefined) {
+      setRacks(prev => prev.map(r => {
+        if (r.column === move.fromCol && r.row === move.fromRow) {
+          return { ...r, [move.fromShelf === 'deep' ? 'deepShelf' : 'frontShelf']: null };
+        }
+        return r;
+      }));
+    }
+
+    const newLog: MovementLog = {
+      id: Date.now().toString(),
+      carrierId: move.carrierId,
+      fromColumn: move.fromCol || 0,
+      fromRow: move.fromRow || 0,
+      toColumn: 0,
+      toRow: 0,
+      timestamp: new Date(),
+      status: 'completed'
+    };
+    setMovementLogs(prev => [newLog, ...prev]);
+  };
+
+  const moveFromPortToRack = async (move: PendingMove) => {
+    if (!move.fromPort || move.toCol === undefined || move.toRow === undefined) return;
+
+    const carrier = move.fromPort === 'in' ? portIn : portOut;
+    if (!carrier) return;
+
+    if (move.fromPort === 'in') setPortIn(null);
+    if (move.fromPort === 'out') setPortOut(null);
+
+    setRacks(prev => prev.map(r => {
+      if (r.column === move.toCol && r.row === move.toRow) {
+        const targetShelf = r.deepShelf === null ? 'deepShelf' : 'frontShelf';
+        return { ...r, [targetShelf]: carrier };
+      }
+      return r;
+    }));
+
+    const newLog: MovementLog = {
+      id: Date.now().toString(),
+      carrierId: carrier.id,
+      fromColumn: 0,
+      fromRow: 0,
+      toColumn: move.toCol,
+      toRow: move.toRow,
+      timestamp: new Date(),
+      status: 'completed'
+    };
+    setMovementLogs(prev => [newLog, ...prev]);
   };
 
   // --- CORE LOGIC: ANIMASI PERPINDAHAN ---
@@ -380,10 +557,25 @@ function App() {
 
   const getMoveDetailsForModal = () => {
     if (!pendingMove) return null;
+
+    let fromStr = '';
+    if (pendingMove.fromPort) {
+      fromStr = `Port ${pendingMove.fromPort.toUpperCase()}`;
+    } else {
+      fromStr = `Col ${pendingMove.fromCol}, Row ${pendingMove.fromRow}`;
+    }
+
+    let toStr = '';
+    if (pendingMove.toPort) {
+      toStr = `Port ${pendingMove.toPort.toUpperCase()}`;
+    } else {
+      toStr = `Col ${pendingMove.toCol}, Row ${pendingMove.toRow}`;
+    }
+
     return {
       carrierId: pendingMove.carrierId,
-      from: `Col ${pendingMove.fromCol}, Row ${pendingMove.fromRow}`,
-      to: `Col ${pendingMove.toCol}, Row ${pendingMove.toRow}`,
+      from: fromStr,
+      to: toStr,
     };
   };
 
@@ -417,7 +609,14 @@ function App() {
           carrierColor={carrierColor}
           targetRow={targetRow}
           isCarryingOnArm={isCarryingOnArm}
-          onCarrierClick={handleCarrierClick} // Prop baru untuk klik detail
+          onCarrierClick={handleCarrierClick}
+          portIn={portIn}
+          portOut={portOut}
+          onPortDragStart={handlePortDragStart}
+          onPortDragOver={handlePortDragOver}
+          onPortDrop={handlePortDrop}
+          dragOverPort={dragOverPort}
+          onPortCarrierClick={handlePortCarrierClick}
         />
       )}
       {activeMenu === "maintenance" && (
