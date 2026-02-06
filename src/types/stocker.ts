@@ -41,8 +41,3 @@ export interface Alarm {
   isActive: boolean;
   createdAt: Date;
 }
-
-export interface PortState {
-  portIn: Carrier | null;
-  portOut: Carrier | null;
-}

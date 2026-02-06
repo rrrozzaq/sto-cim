@@ -1,7 +1,5 @@
 import { RackGrid } from './RackGrid.tsx';
 import { Crane } from './Crane.tsx';
-import { Port } from './Port.tsx';
-import { AnimatedArrow } from './AnimatedArrow.tsx';
 import { Rack, CraneStatus, Carrier } from '../types/stocker';
 
 interface MainScreenProps {
@@ -16,13 +14,6 @@ interface MainScreenProps {
   targetRow: number | null;
   isCarryingOnArm: boolean;
   onCarrierClick: (carrier: Carrier | null, col: number, row: number, shelf: 'deep' | 'front') => void;
-  portIn: Carrier | null;
-  portOut: Carrier | null;
-  onPortDragStart: (e: React.DragEvent, type: 'in' | 'out') => void;
-  onPortDragOver: (e: React.DragEvent) => void;
-  onPortDrop: (e: React.DragEvent, type: 'in' | 'out') => void;
-  dragOverPort: 'in' | 'out' | null;
-  onPortCarrierClick: (carrier: Carrier | null, type: 'in' | 'out') => void;
 }
 
 export function MainScreen({
@@ -36,63 +27,17 @@ export function MainScreen({
   carrierColor,
   targetRow,
   isCarryingOnArm,
-  onCarrierClick,
-  portIn,
-  portOut,
-  onPortDragStart,
-  onPortDragOver,
-  onPortDrop,
-  dragOverPort,
-  onPortCarrierClick
+  onCarrierClick
 }: MainScreenProps) {
   
   // Array kolom 1-7
   const cols = Array.from({ length: 7 }, (_, i) => i + 1);
 
-  const showArrow = animationStage !== 'idle' && (
-    animationStage === 'picking-up' ||
-    animationStage === 'lifting' ||
-    animationStage === 'lowering' ||
-    animationStage === 'placing'
-  );
-
-  const arrowDirection = (animationStage === 'picking-up' || animationStage === 'lifting')
-    ? 'to-crane'
-    : 'from-crane';
-
   return (
-    <div className="flex-1 flex items-center justify-center gap-6 py-6 w-full max-w-7xl mx-auto overflow-hidden">
-
-      {/* === PORT IN & PORT OUT (LEFT SIDE) === */}
-      <div className="flex flex-col gap-6 items-center">
-        <Port
-          type="in"
-          carrier={portIn}
-          onDragStart={onPortDragStart}
-          onDragOver={onPortDragOver}
-          onDrop={onPortDrop}
-          isDragOver={dragOverPort === 'in'}
-          onCarrierClick={onPortCarrierClick}
-        />
-        <Port
-          type="out"
-          carrier={portOut}
-          onDragStart={onPortDragStart}
-          onDragOver={onPortDragOver}
-          onDrop={onPortDrop}
-          isDragOver={dragOverPort === 'out'}
-          onCarrierClick={onPortCarrierClick}
-        />
-      </div>
-
-      {/* === MAIN RACK AREA === */}
-      <div className="flex-1 flex flex-col items-center justify-center gap-4 relative">
-
-        {/* Animated Arrow */}
-        <AnimatedArrow isActive={showArrow} direction={arrowDirection} />
-
-        {/* === BAGIAN ATAS (RAK 5-8) === */}
-        <div className="flex flex-col gap-2">
+    <div className="flex-1 flex flex-col items-center justify-center gap-4 py-6 w-full max-w-5xl mx-auto overflow-hidden">
+      
+      {/* === BAGIAN ATAS (RAK 5-8) === */}
+      <div className="flex flex-col gap-2">
         <RackGrid
           racks={racks}
           columns={7}
@@ -148,7 +93,6 @@ export function MainScreen({
           dragOverCell={dragOverCell}
           onCarrierClick={onCarrierClick}
         />
-      </div>
       </div>
     </div>
   );
