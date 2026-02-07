@@ -10,11 +10,12 @@ export function MovementArrow({ fromCol, fromRow, toCol, toRow, isVisible }: Mov
   if (!isVisible) return null;
 
   const RACK_WIDTH = 56;
-  const RACK_HEIGHT = 64;
   const RACK_GAP = 8;
+  const RACK_CELL_HEIGHT = 64;
   const ROW_LABEL_WIDTH = 48;
+  const COLUMN_LABEL_HEIGHT = 32;
   const HORIZONTAL_OFFSET = ROW_LABEL_WIDTH + 12;
-  const CRANE_Y = 330;
+  const TOP_SECTION_OFFSET = COLUMN_LABEL_HEIGHT + 8;
 
   const calculatePosition = (col: number, row: number) => {
     const x = HORIZONTAL_OFFSET + (col - 1) * (RACK_WIDTH + RACK_GAP) + RACK_WIDTH / 2;
@@ -22,10 +23,15 @@ export function MovementArrow({ fromCol, fromRow, toCol, toRow, isVisible }: Mov
     let y: number;
     if (row > 4) {
       const topSectionRow = row - 5;
-      y = (3 - topSectionRow) * (RACK_HEIGHT + RACK_GAP) + RACK_HEIGHT / 2 + 32;
+      const yInTopSection = TOP_SECTION_OFFSET + (3 - topSectionRow) * (RACK_CELL_HEIGHT + RACK_GAP) + RACK_CELL_HEIGHT / 2;
+      y = yInTopSection;
     } else {
       const bottomSectionRow = row - 1;
-      y = 600 + (3 - bottomSectionRow) * (RACK_HEIGHT + RACK_GAP) + RACK_HEIGHT / 2 + 32;
+      const topSectionHeight = TOP_SECTION_OFFSET + 4 * (RACK_CELL_HEIGHT + RACK_GAP);
+      const craneHeight = 130;
+      const bottomSectionOffset = topSectionHeight + craneHeight + COLUMN_LABEL_HEIGHT;
+      const yInBottomSection = bottomSectionOffset + (3 - bottomSectionRow) * (RACK_CELL_HEIGHT + RACK_GAP) + RACK_CELL_HEIGHT / 2;
+      y = yInBottomSection;
     }
 
     return { x, y };
@@ -33,6 +39,10 @@ export function MovementArrow({ fromCol, fromRow, toCol, toRow, isVisible }: Mov
 
   const start = calculatePosition(fromCol, fromRow);
   const end = calculatePosition(toCol, toRow);
+
+  const topSectionHeight = TOP_SECTION_OFFSET + 4 * (RACK_CELL_HEIGHT + RACK_GAP);
+  const craneHeight = 130;
+  const CRANE_Y = topSectionHeight + craneHeight / 2;
 
   const pathData = `
     M ${start.x} ${start.y}
@@ -47,13 +57,13 @@ export function MovementArrow({ fromCol, fromRow, toCol, toRow, isVisible }: Mov
         <defs>
           <marker
             id="arrowhead"
-            markerWidth="12"
-            markerHeight="12"
-            refX="10"
-            refY="6"
+            markerWidth="8"
+            markerHeight="8"
+            refX="7"
+            refY="4"
             orient="auto"
           >
-            <polygon points="0 0, 12 6, 0 12" fill="#fb923c" />
+            <polygon points="0 0, 8 4, 0 8" fill="#fb923c" />
           </marker>
         </defs>
 
@@ -77,11 +87,11 @@ export function MovementArrow({ fromCol, fromRow, toCol, toRow, isVisible }: Mov
             />
           </path>
 
-          <circle cx={start.x} cy={start.y} r="10" fill="#ef4444" opacity="0.9">
+          <circle cx={start.x} cy={start.y} r="8" fill="#ef4444" opacity="0.9">
             <animate
               attributeName="r"
-              from="10"
-              to="14"
+              from="8"
+              to="11"
               dur="0.8s"
               repeatCount="indefinite"
             />
@@ -94,11 +104,11 @@ export function MovementArrow({ fromCol, fromRow, toCol, toRow, isVisible }: Mov
             />
           </circle>
 
-          <circle cx={end.x} cy={end.y} r="10" fill="#10b981" opacity="0.9">
+          <circle cx={end.x} cy={end.y} r="8" fill="#10b981" opacity="0.9">
             <animate
               attributeName="r"
-              from="10"
-              to="14"
+              from="8"
+              to="11"
               dur="0.8s"
               repeatCount="indefinite"
             />
