@@ -14,6 +14,7 @@ export function MovementArrow({ fromCol, fromRow, toCol, toRow, isVisible }: Mov
   const RACK_GAP = 8;
   const ROW_LABEL_WIDTH = 48;
   const HORIZONTAL_OFFSET = ROW_LABEL_WIDTH + 12;
+  const CRANE_Y = 330;
 
   const calculatePosition = (col: number, row: number) => {
     const x = HORIZONTAL_OFFSET + (col - 1) * (RACK_WIDTH + RACK_GAP) + RACK_WIDTH / 2;
@@ -33,104 +34,103 @@ export function MovementArrow({ fromCol, fromRow, toCol, toRow, isVisible }: Mov
   const start = calculatePosition(fromCol, fromRow);
   const end = calculatePosition(toCol, toRow);
 
+  const pathData = `
+    M ${start.x} ${start.y}
+    L ${start.x} ${CRANE_Y}
+    L ${end.x} ${CRANE_Y}
+    L ${end.x} ${end.y}
+  `;
+
   return (
     <div className="fixed inset-0 pointer-events-none z-40" style={{ top: 0, left: 0 }}>
       <svg className="w-full h-full">
         <defs>
           <marker
             id="arrowhead"
-            markerWidth="10"
-            markerHeight="10"
-            refX="9"
-            refY="3"
+            markerWidth="12"
+            markerHeight="12"
+            refX="10"
+            refY="6"
             orient="auto"
-            markerUnits="strokeWidth"
           >
-            <polygon points="0 0, 10 3, 0 6" fill="#f59e0b" />
+            <polygon points="0 0, 12 6, 0 12" fill="#fb923c" />
           </marker>
-
-          <linearGradient id="arrowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#ef4444" />
-            <stop offset="50%" stopColor="#f59e0b" />
-            <stop offset="100%" stopColor="#10b981" />
-          </linearGradient>
         </defs>
 
         <g>
-          <line
-            x1={start.x}
-            y1={start.y}
-            x2={end.x}
-            y2={end.y}
-            stroke="url(#arrowGradient)"
-            strokeWidth="4"
+          <path
+            d={pathData}
+            stroke="#fb923c"
+            strokeWidth="5"
+            fill="none"
             markerEnd="url(#arrowhead)"
-            className="animate-pulse"
-            strokeDasharray="10 5"
+            strokeDasharray="15 8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
             <animate
               attributeName="stroke-dashoffset"
-              from="15"
+              from="23"
               to="0"
-              dur="1s"
+              dur="1.5s"
               repeatCount="indefinite"
             />
-          </line>
+          </path>
 
-          <circle cx={start.x} cy={start.y} r="8" fill="#ef4444" opacity="0.8">
+          <circle cx={start.x} cy={start.y} r="10" fill="#ef4444" opacity="0.9">
             <animate
               attributeName="r"
-              from="8"
-              to="12"
+              from="10"
+              to="14"
               dur="0.8s"
               repeatCount="indefinite"
-              begin="0s"
             />
             <animate
               attributeName="opacity"
-              from="0.8"
-              to="0.3"
+              from="0.9"
+              to="0.4"
               dur="0.8s"
               repeatCount="indefinite"
-              begin="0s"
             />
           </circle>
 
-          <circle cx={end.x} cy={end.y} r="8" fill="#10b981" opacity="0.8">
+          <circle cx={end.x} cy={end.y} r="10" fill="#10b981" opacity="0.9">
             <animate
               attributeName="r"
-              from="8"
-              to="12"
+              from="10"
+              to="14"
               dur="0.8s"
               repeatCount="indefinite"
-              begin="0s"
             />
             <animate
               attributeName="opacity"
-              from="0.8"
-              to="0.3"
+              from="0.9"
+              to="0.4"
               dur="0.8s"
               repeatCount="indefinite"
-              begin="0s"
             />
           </circle>
 
-          <circle cx={start.x} cy={start.y} r="4" fill="white">
+          <circle r="6" fill="white" opacity="0.95" filter="drop-shadow(0 0 3px rgba(0,0,0,0.3))">
             <animateMotion
-              path={`M ${start.x} ${start.y} L ${end.x} ${end.y}`}
               dur="2s"
               repeatCount="indefinite"
-            />
+            >
+              <mpath href={`#pathdef`} />
+            </animateMotion>
           </circle>
         </g>
+
+        <path id="pathdef" d={pathData} style={{ display: 'none' }} />
       </svg>
 
       <div
-        className="absolute bg-amber-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg border-2 border-white"
+        className="absolute bg-orange-400 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg border-2 border-white"
         style={{
-          left: `${(start.x + end.x) / 2}px`,
-          top: `${(start.y + end.y) / 2 - 20}px`,
-          transform: 'translate(-50%, -50%)'
+          left: `${Math.min(start.x, end.x) + Math.abs(end.x - start.x) / 2}px`,
+          top: `${CRANE_Y - 30}px`,
+          transform: 'translate(-50%, -50%)',
+          pointerEvents: 'none'
         }}
       >
         Moving...
